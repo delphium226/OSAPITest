@@ -409,13 +409,8 @@ function parseWKTToGeoJSON(wkt) {
     const content = wkt.substring(wkt.indexOf('((') + 2, wkt.lastIndexOf('))'));
 
     // Very basic parser for single polygon for now, or use library
-    // This is getting complex for regex.
-    // If we assume simple POLYGON ((x1 y1, x2 y2...))
     try {
-        // Remove outer parens if multi
-        // Split by '), (' if multi?
-        // Let's assume standard simple WKT from SEPA for now.
-        // Actually, better to use regex to extract coordinate pairs.
+
 
         const coordsText = content.replace(/\)/g, '').replace(/\(/g, '');
         const pairs = coordsText.split(',');
@@ -448,13 +443,6 @@ function getFeatureInfo(evt, layer) {
             'info_format': 'text/html' // Changed from application/json
         }
     );
-
-    // Use Proxy for WMS Feature Info to allow parsing?
-    // WMS usually returns HTML or XML.
-    // SEPA might return JSON if asked.
-    // Let's proxy it to avoid CORS if needed, but 'img' requests are fine.
-    // FeatureInfo requests via fetch NEED proxy if CORS restricted.
-    // SEPA servers usually CORS restricted.
 
     // Transform URL to use local proxy
     // Original: https://map.sepa.org.uk/server/services/.../WMSServer?....

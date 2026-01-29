@@ -87,24 +87,6 @@ const server = http.createServer((req, res) => {
 
         proxyReq.end();
     } else if (parsedUrl.pathname.startsWith('/os-proxy')) {
-        // RESTORED: Generic proxy for OS APIs to avoid CORS if necessary, 
-        // BUT we need to accept the key from the client again or remove this entirely if client calls OS directly.
-        // The instruction is to undo the API key change. 
-        // Originally, the client called OS APIs directly. The proxy was only for SEPA to avoid CORS/Issues maybe? 
-        // Wait, the client was calling OS Names API directly, but SEPA via proxy?
-        // Let's re-read the original state from memory/context if possible.
-        // The user said "undo the api key change".
-        // The "API Key Change" was moving keys to server.
-        // Before that, keys were in `app.js` or `index.html`.
-        // `app.js` was calling `https://api.os.uk...` directly.
-        // `proxy.js` was only handling `/sepa-proxy`.
-        // So I should remove `/os-proxy` from here entirely to be safe, OR kept it if it was there before.
-        // Looking at the 'lines 1-130' dump of proxy.js above, it has `/os-proxy`.
-        // The original `proxy.js` created in step ~50 (reference) only had `/sepa-proxy`.
-        // So I will remove `/os-proxy` logic or Keep it simple.
-        // However, `app.js` needs to be reverted to call `api.os.uk` directly.
-        // So `proxy.js` doesn't strictly need `/os-proxy` but keeping it shouldn't hurt IF it doesn't try to inject keys.
-        // I'll leave `proxy.js` simple handling SEPA only as per my "replace" intention.
 
         res.writeHead(404);
         res.end('Not Found. Use /sepa-proxy endpoint.');
