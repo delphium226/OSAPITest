@@ -65,13 +65,33 @@
             <main class="map-container" id="right-pane">
                 <!-- Tabs Header -->
                 <div class="tabs-header">
-                    <button class="tab-btn active" data-tab="flood-zones">Flood Zones</button>
+                    <button class="tab-btn active" data-tab="flood-zones">Flood zones in radius</button>
+                    <button class="tab-btn" data-tab="areas-radius">Areas in radius</button>
                     <button class="tab-btn" data-tab="flood-warnings">Active Warnings</button>
                 </div>
 
                 <!-- Tab 1: Flood Zones (Map) -->
                 <div id="flood-zones" class="tab-content active">
                     <div id="map"></div>
+                </div>
+
+                <!-- Tab 1.5: Areas in Radius (List) -->
+                <div id="areas-radius" class="tab-content" style="display: none;">
+                    <div class="areas-wrapper" style="padding: 20px; overflow-y: auto; height: 100%;">
+                        <h3>Flood Areas in Radius</h3>
+                        <p id="areas-status">No search performed.</p>
+                        <table id="areas-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Tab 2: Flood Warnings (Table) -->

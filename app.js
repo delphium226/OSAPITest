@@ -85,6 +85,9 @@ async function handleSearch() {
                         const sepaData = await sepaResponse.json();
 
                         if (Array.isArray(sepaData) && sepaData.length > 0) {
+                            // Populate List Tab
+                            renderAreasList(sepaData);
+
                             sepaData.forEach(area => {
                                 // Draw Shape if available
                                 if (area.shape) {
@@ -99,6 +102,8 @@ async function handleSearch() {
                                     } catch (e) { console.warn('Could not parse shape', e); }
                                 }
                             });
+                        } else {
+                            renderAreasList([]); // Clear list if no results
                         }
                     } else {
                         if (sepaResponse.status === 401 || sepaResponse.status === 403) {
@@ -528,4 +533,47 @@ function getFeatureInfoUrl(map, layer, latlng, params) {
         .join('&');
 
     return layer._url + '?' + queryString;
+}
+
+// Render Areas List in Tab
+function renderAreasList(data) {
+    const statusEl = document.getElementById('areas-status');
+    const tableBody = document.querySelector('#areas-table tbody');
+
+    // Check if elements exist before proceeding (safety)
+    if (!statusEl || !tableBody) return;
+
+    tableBody.innerHTML = ''; // Clear previous
+
+    if (!data || data.length === 0) {
+        statusEl.textContent = "No flood areas found in this radius.";
+        return;
+    }
+
+    statusEl.textContent = `Found ${data.length} area(s).`;
+
+    data.forEach(area => {
+        const row = document.createElement('tr');
+
+        // Name Column
+        const nameCell = document.createElement('td');
+        // Use a safe check for properties
+        const name = area.name || area.NAME || 'Unknown Area';
+        const desc = area.description || area.DESCRIPTION || '';
+        nameCell.innerHTML = `<strong>${name}</strong><br><span style="font-size:0.9em; color:#666;">${desc}</span>`;
+
+        // Data Column (JSON dump for "all fields")
+        const dataCell = document.createElement('td');
+        const jsonStr = JSON.stringify(area, null, 2);
+        dataCell.innerHTML = `
+            <details>
+                <summary>View All Fields</summary>
+                <pre style="font-size:0.75em; max-height: 150px; overflow: auto; background:#f0f0f0; color:#212529; padding:8px; border:1px solid #ccc; border-radius: 4px;">${jsonStr}</pre>
+            </details>
+        `;
+
+        row.appendChild(nameCell);
+        row.appendChild(dataCell);
+        tableBody.appendChild(row);
+    });
 }

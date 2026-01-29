@@ -10,6 +10,7 @@ An interactive test harness for exploring Ordnance Survey (OS) Names/Maps APIs a
     *   Flood risk overlay provided by **SEPA Flood Maps WMS** (ArcGIS).
     *   Click on the map to query flood risk details (GetFeatureInfo).
 *   **Active Flood Warnings**: Check for live flood warnings in a specified radius around a location using the **SEPA FFIMS API**.
+*   **Areas in Radius**: View a detailed list of all flood areas within the search radius, including full raw data for each area.
 *   **API Inspection**: A built-in "API Calls Log" panel displays every network request made by the application, including status codes and response payloads, making it excellent for debugging and understanding the underlying APIs.
 
 ## Prerequisites
@@ -39,7 +40,8 @@ An interactive test harness for exploring Ordnance Survey (OS) Names/Maps APIs a
     *   Adjust the **Radius** if needed.
     *   Click **Search Flood Zones**.
 4.  **View Results**:
-    *   The map will fly to the location and display flood risk layers.
+    *   The map ("Flood zones in radius" tab) will fly to the location and display flood risk layers.
+    *   Use the **Areas in radius** tab to see a text list of all flood areas found.
     *   Use the **Active Warnings** tab (or button) to check for current flood alerts in that area.
 
 ## Project Structure
