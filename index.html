@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scotland Flood Zone Test Harness</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+
+        <!-- Top Row: Inputs (50%) and Map (50%) -->
+        <div class="top-row">
+            <!-- Sidebar for Inputs -->
+            <aside class="sidebar">
+                <header>
+                    <h1>Flood Zone <span class="highlight">Harness</span></h1>
+                    <p>Test OS & SEPA APIs</p>
+                </header>
+
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label for="os-key">OS API Key</label>
+                        <input type="password" id="os-key" placeholder="Enter OS API Key"
+                            value="WVy8sDkJXTioRo1qwge9ZBUFhJATJA3u">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="sepa-key">SEPA API Key (Optional)</label>
+                        <input type="password" id="sepa-key" placeholder="Enter SEPA API Key"
+                            value="21RKbqIHvu9bKct9QW5ba2do6DGCcRzH17IXnJdU">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="postcode">Postcode</label>
+                        <input type="text" id="postcode" placeholder="e.g. EH1 1YZ">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="radius">Radius (meters)</label>
+                        <input type="number" id="radius" value="20000" min="100" max="100000">
+                    </div>
+                </div>
+
+                <button id="search-btn">Search Flood Zones</button>
+                <button id="warnings-btn" class="secondary-btn"
+                    style="margin-top: 10px; background: var(--secondary-color, #6c757d);">Active Flood
+                    Warnings</button>
+            </aside>
+
+            <!-- Main Map Area / Results Pane -->
+            <main class="map-container" id="right-pane">
+                <!-- Tabs Header -->
+                <div class="tabs-header">
+                    <button class="tab-btn active" data-tab="flood-zones">Flood Zones</button>
+                    <button class="tab-btn" data-tab="flood-warnings">Active Warnings</button>
+                </div>
+
+                <!-- Tab 1: Flood Zones (Map) -->
+                <div id="flood-zones" class="tab-content active">
+                    <div id="map"></div>
+                </div>
+
+                <!-- Tab 2: Flood Warnings (Table) -->
+                <div id="flood-warnings" class="tab-content" style="display: none;">
+                    <div class="warnings-wrapper" style="padding: 20px; overflow-y: auto; height: 100%;">
+                        <h3>Active Flood Warnings</h3>
+                        <p id="warnings-status">No search performed.</p>
+                        <table id="warnings-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>Severity</th>
+                                    <th>Area / Message</th>
+                                    <th>Raised</th>
+                                    <th>Full Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Bottom Row: API Call Logs (100%) -->
+        <div class="logs-container">
+            <h2>API Calls Log</h2>
+            <div class="table-wrapper">
+                <table id="api-log-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>API Name</th>
+                            <th style="width: 80px;">Method</th>
+                            <th style="width: 60px;">Status</th>
+                            <th>URL</th>
+                            <th>Response Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Logs will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+
+</html>

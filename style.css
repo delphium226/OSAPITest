@@ -1,0 +1,485 @@
+:root {
+    --bg-color: #0f172a;
+    --sidebar-bg: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --accent-color: #38bdf8;
+    --accent-hover: #0ea5e9;
+    --border-color: #334155;
+    --success-color: #4ade80;
+    --error-color: #f87171;
+    --font-family: 'Inter', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Top Row: Sidebar + Map */
+.top-row {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    /* Takes available space */
+    min-height: 0;
+    /* Important for scrolling */
+}
+
+/* Sidebar (Inputs) */
+.sidebar {
+    width: 50%;
+    /* Force 50% */
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow-y: auto;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+header .highlight {
+    color: var(--accent-color);
+}
+
+header p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+input {
+    padding: 0.75rem;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+input:focus {
+    border-color: var(--accent-color);
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    margin: 0.5rem 0;
+}
+
+button {
+    padding: 0.875rem;
+    background-color: var(--accent-color);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Map area */
+.map-container {
+    flex: 1;
+    /* Takes remaining 50% */
+    position: relative;
+    width: 50%;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* Logs Container - Bottom Section */
+.logs-container {
+    height: 350px;
+    /* Fixed height for log area */
+    background-color: var(--bg-color);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    min-height: 200px;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+}
+
+.logs-container h2 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+}
+
+.table-wrapper {
+    flex-grow: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-color);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+    table-layout: fixed;
+    /* Helps with long data */
+}
+
+th,
+td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+    word-break: break-word;
+}
+
+th {
+    background-color: var(--sidebar-bg);
+    position: sticky;
+    top: 0;
+    color: var(--text-secondary);
+}
+
+.status-success {
+    color: var(--success-color);
+}
+
+.status-error {
+    color: var(--error-color);
+}
+
+.method {
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+/* JSON Prettify in table */
+pre {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.7rem;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Top Row: Sidebar + Map */
+.top-row {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    /* Takes available space */
+    min-height: 0;
+    /* Important for scrolling */
+}
+
+/* Sidebar (Inputs) */
+.sidebar {
+    width: 50%;
+    /* Force 50% */
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow-y: auto;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+header .highlight {
+    color: var(--accent-color);
+}
+
+header p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+input {
+    padding: 0.75rem;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+input:focus {
+    border-color: var(--accent-color);
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    margin: 0.5rem 0;
+}
+
+button {
+    padding: 0.875rem;
+    background-color: var(--accent-color);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Map area */
+.map-container {
+    flex: 1;
+    /* Takes remaining 50% */
+    position: relative;
+    width: 50%;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* Logs Container - Bottom Section */
+.logs-container {
+    height: 350px;
+    /* Fixed height for log area */
+    background-color: var(--bg-color);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    min-height: 200px;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+}
+
+.logs-container h2 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+}
+
+.table-wrapper {
+    flex-grow: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-color);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+    table-layout: fixed;
+    /* Helps with long data */
+}
+
+th,
+td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+    word-break: break-word;
+}
+
+th {
+    background-color: var(--sidebar-bg);
+    position: sticky;
+    top: 0;
+    color: var(--text-secondary);
+}
+
+.status-success {
+    color: var(--success-color);
+}
+
+.status-error {
+    color: var(--error-color);
+}
+
+.method {
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+/* JSON Prettify in table */
+pre {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+details summary {
+    cursor: pointer;
+    color: var(--accent-color);
+    outline: none;
+}
+
+/* Tabs Styling */
+.tabs-header {
+    display: flex;
+    background: #f1f3f5;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid transparent;
+}
+
+.tab-btn.active {
+    background: white;
+    color: var(--accent-color);
+    border-bottom: 2px solid var(--accent-color);
+}
+
+.tab-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 40px);
+    /* Adjust for header */
+}
+
+#flood-zones {
+    height: 100%;
+    min-height: 400px;
+    /* Force minimum height in case flex fails */
+}
+
+#flood-warnings {
+    background: white;
+}
+
+/* Warnings Table */
+#warnings-table th,
+#warnings-table td {
+    padding: 8px;
+    border: 1px solid #eee;
+    text-align: left;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+#warnings-table th {
+    background: #f8f9fa;
+    color: #333;
+    /* Explicitly set dark color for contrast against light bg */
+}
+
+/* Severity Colors */
+.severity-high {
+    border-left: 5px solid #d63384;
+    background: #fff0f6 !important;
+}
+
+.severity-medium {
+    border-left: 5px solid #fd7e14;
+    background: #fff4e6 !important;
+}
+
+.severity-low {
+    border-left: 5px solid #ffc107;
+    background: #fff9db !important;
+}
