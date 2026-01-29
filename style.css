@@ -164,7 +164,8 @@ button:hover {
 table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
+    /* Increased size for visibility */
     table-layout: fixed;
     /* Helps with long data */
 }
@@ -182,202 +183,11 @@ th {
     background-color: var(--sidebar-bg);
     position: sticky;
     top: 0;
-    color: var(--text-secondary);
-}
-
-.status-success {
-    color: var(--success-color);
-}
-
-.status-error {
-    color: var(--error-color);
-}
-
-.method {
-    font-weight: bold;
-    color: var(--accent-color);
-}
-
-/* JSON Prettify in table */
-pre {
-    margin: 0;
-    white-space: pre-wrap;
-    font-family: 'Consolas', 'Monaco', monospace;
-    font-size: 0.7rem;
-}
-
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    font-family: var(--font-family);
-    background-color: var(--bg-color);
     color: var(--text-primary);
-    height: 100vh;
-    overflow: hidden;
-}
-
-.app-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-/* Top Row: Sidebar + Map */
-.top-row {
-    display: flex;
-    flex-direction: row;
-    flex: 1;
-    /* Takes available space */
-    min-height: 0;
-    /* Important for scrolling */
-}
-
-/* Sidebar (Inputs) */
-.sidebar {
-    width: 50%;
-    /* Force 50% */
-    background-color: var(--sidebar-bg);
-    border-right: 1px solid var(--border-color);
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    overflow-y: auto;
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
-}
-
-header h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 0.25rem;
-}
-
-header .highlight {
-    color: var(--accent-color);
-}
-
-header p {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-}
-
-input {
-    padding: 0.75rem;
-    background-color: var(--bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-primary);
-    font-family: inherit;
-    font-size: 0.9rem;
-    outline: none;
-    transition: border-color 0.2s;
-}
-
-input:focus {
-    border-color: var(--accent-color);
-}
-
-hr {
-    border: 0;
-    border-top: 1px solid var(--border-color);
-    margin: 0.5rem 0;
-}
-
-button {
-    padding: 0.875rem;
-    background-color: var(--accent-color);
-    color: #fff;
-    border: none;
-    border-radius: 6px;
+    /* Changed from secondary to primary for better contrast */
     font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-button:hover {
-    background-color: var(--accent-hover);
-}
-
-/* Map area */
-.map-container {
-    flex: 1;
-    /* Takes remaining 50% */
-    position: relative;
-    width: 50%;
-}
-
-#map {
-    width: 100%;
-    height: 100%;
-}
-
-/* Logs Container - Bottom Section */
-.logs-container {
-    height: 350px;
-    /* Fixed height for log area */
-    background-color: var(--bg-color);
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    padding: 1rem;
-    min-height: 200px;
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.3);
-    z-index: 1001;
-}
-
-.logs-container h2 {
-    font-size: 1rem;
-    margin-bottom: 0.75rem;
-    color: var(--text-primary);
-}
-
-.table-wrapper {
-    flex-grow: 1;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--bg-color);
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.75rem;
-    table-layout: fixed;
-    /* Helps with long data */
-}
-
-th,
-td {
-    padding: 0.5rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-    vertical-align: top;
-    word-break: break-word;
-}
-
-th {
-    background-color: var(--sidebar-bg);
-    position: sticky;
-    top: 0;
-    color: var(--text-secondary);
+    z-index: 10;
+    /* Ensure header stays on top */
 }
 
 .status-success {
@@ -398,8 +208,9 @@ pre {
     margin: 0;
     white-space: pre-wrap;
     font-family: 'Consolas', 'Monaco', monospace;
-    font-size: 0.7rem;
-    color: var(--text-secondary);
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    /* Changed from secondary to primary */
     max-height: 100px;
     overflow-y: auto;
 }

@@ -7,8 +7,6 @@ let floodLayer;
 const OS_NAMES_API_URL = 'https://api.os.uk/search/names/v1/find';
 const SEPA_WMS_URL = 'https://map.sepa.org.uk/arcgis/services/FloodMaps/FloodMaps/MapServer/WMSServer';
 
-// ... (DOM Elements and Init Map remain same)
-
 // Search Handler
 async function handleSearch() {
     const osKey = document.getElementById('os-key').value.trim();
@@ -39,47 +37,88 @@ async function handleSearch() {
 
         if (response.ok && data.results && data.results.length > 0) {
             const result = data.results[0].GAZETTEER_ENTRY;
-
-            // Extract Coordinates
             const easting = result.GEOMETRY_X;
             const northing = result.GEOMETRY_Y;
+            const { lat, lng } = bngToLatLng(easting, northing);
 
-            // Need Lat/Lng for Leaflet.
-            // OS Names API typically returns Easting/Northing (EPSG:27700).
-            // We need to convert or check if Lat/Lng provided.
-            // *If* OS Names doesn't provide Lat/Lng, we need a converter.
-            // For now, let's assume valid X/Y for SEPA but we need Lat/Lng for Map.
+            // 2. Update Map View
+            map.flyTo([lat, lng], 13);
 
-            // Simple approximation or hard requirement for Proj4?
-            // "Lightweight" harness... 
-            // Let's assume for a moment the user might want to see the error or I need to fix it.
-            // I'll grab Lat/Lng if available, else alert.
-            // Actually, OS Names API *does* support `output_srs` in some versions or I might require proj4.
-            // *Wait*, let's assume I need proj4. I'll inject it.
+            // Update Base Layer to OS Maps
+            L.tileLayer(`https://api.os.uk/maps/raster/v1/zxy/Light_3857/{z}/{x}/{y}.png?key=${osKey}`, {
+                maxZoom: 20,
+                attribution: '&copy; Crown copyright and database rights ' + new Date().getFullYear() + ' Ordnance Survey.'
+            }).addTo(map);
 
-            // TEMPORARY: Attempt to read Lat/Lng if they exist in a hidden field, else use a placeholder or convert.
-            // Actually, most OS JSON APIs return 'GEOMETRY_X' and 'GEOMETRY_Y'.
-            // I will add a conversion function for BNG to WGS84. It's complex math but I can include a small function.
-            // OR I can use PROJ4 via CDN.
+            // Draw Radius
+            if (radiusCircle) map.removeLayer(radiusCircle);
+            radiusCircle = L.circle([lat, lng], {
+                color: 'var(--accent-color)',
+                fillColor: 'var(--accent-color)',
+                fillOpacity: 0.1,
+                radius: parseInt(radius)
+            }).addTo(map);
 
-            // Let's defer map centering to after I confirm I have coords.
-            // But SEPA API *NOT_USEDS* Easting/Northing, so we are GOOD for SEPA.
-            // Map needs Lat/Lng.
+            // --- SEPA FFIMS API Integration ---
+            if (floodLayer) {
+                floodLayer.clearLayers();
+            } else {
+                floodLayer = L.featureGroup().addTo(map);
+            }
 
-            // I'll do a quick approximate conversion or look for CDN in next step if this fails to render.
-            // For now, let's update the API call first.
+            if (sepaKey) {
+                // Construct SEPA FFIMS URL (Using Local Proxy)
+                const sepaUrl = `http://localhost:3000/sepa-proxy/areas/location?x=${easting}&y=${northing}&radius=${radius}&includeTestAreas=true`;
 
-            // ... (Rest of logic)
+                const sepaOptions = {
+                    method: 'GET',
+                    headers: {
+                        'x-api-key': sepaKey,
+                        'Accept': 'application/json'
+                    }
+                };
 
-            // We will use X/Y for SEPA.
-            // We need Lat/Lng for Map.
+                try {
+                    const sepaResponse = await fetchWithLog(sepaUrl, sepaOptions);
 
+                    if (sepaResponse.ok) {
+                        const sepaData = await sepaResponse.json();
+
+                        if (Array.isArray(sepaData) && sepaData.length > 0) {
+                            sepaData.forEach(area => {
+                                // Draw Shape if available
+                                if (area.shape) {
+                                    try {
+                                        const geoJsonGeometry = parseWKTToGeoJSON(area.shape);
+                                        if (geoJsonGeometry) {
+                                            const layer = L.geoJSON(geoJsonGeometry, {
+                                                style: { color: '#ff4d4d', weight: 2, fillOpacity: 0.3 }
+                                            }).bindPopup(`<strong>${area.name}</strong><br>${area.description || ''}`);
+                                            floodLayer.addLayer(layer);
+                                        }
+                                    } catch (e) { console.warn('Could not parse shape', e); }
+                                }
+                            });
+                        }
+                    } else {
+                        if (sepaResponse.status === 401 || sepaResponse.status === 403) {
+                            alert('SEPA API Key Invalid or Unauthorized.');
+                        }
+                    }
+                } catch (err) {
+                    console.error('SEPA API Error', err);
+                }
+            }
         } else {
             alert('Postcode not found or API Error.');
         }
 
     } catch (error) {
-        // ...
+        console.error(error);
+        alert('An error occurred. See logs.');
+    } finally {
+        searchBtn.textContent = "Search Flood Zones";
+        searchBtn.disabled = false;
     }
 }
 
@@ -105,6 +144,7 @@ function initMap() {
         format: 'image/png',
         transparent: true,
         version: '1.3.0',
+        crs: L.CRS.EPSG4326,
         attribution: 'SEPA Flood Maps'
     });
     floodWms.addTo(map);
@@ -118,51 +158,39 @@ function initMap() {
     });
 }
 
-// Logging State
+// LOGGING FUNCTIONS
 let apiCallCount = 0;
-
-// Log API Call to Table
 function logApiCall(method, url, status, data = null, apiName = 'Unknown API') {
     apiCallCount++;
     const row = document.createElement('tr');
-
-    // Truncate URL for display
     const displayUrl = url.length > 50 ? '...' + url.substring(url.length - 50) : url;
-
-    // Format Data
     let dataDisplay = '-';
+    // Sanitize HTML if it's not JSON
     if (data) {
         try {
             const jsonStr = JSON.stringify(data, null, 2);
-            dataDisplay = `
-                <details>
-                    <summary>View JSON</summary>
-                    <pre>${jsonStr}</pre>
-                </details>
-            `;
+            dataDisplay = `<details><summary>View JSON</summary><pre>${jsonStr}</pre></details>`;
         } catch (e) {
-            dataDisplay = String(data);
+            // It's a string, possibly HTML. Escape it!
+            const escapedData = String(data)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+
+            // Limit length for display
+            const shortData = escapedData.length > 200 ? escapedData.substring(0, 200) + '...' : escapedData;
+
+            dataDisplay = `<details><summary>View Response</summary><pre>${shortData}</pre></details>`;
         }
     }
-
-    row.innerHTML = `
-        <td>${apiCallCount}</td>
-        <td><strong>${apiName}</strong></td>
-        <td><span class="method">${method}</span></td>
-        <td class="${status >= 200 && status < 300 ? 'status-success' : 'status-error'}">${status}</td>
-        <td title="${url}"><a href="${url}" target="_blank" style="color: inherit; text-decoration: none;">${displayUrl}</a></td>
-        <td>${dataDisplay}</td>
-    `;
-
-    // Add to top
+    row.innerHTML = `<td>${apiCallCount}</td><td><strong>${apiName}</strong></td><td><span class="method">${method}</span></td><td class="${status >= 200 && status < 300 ? 'status-success' : 'status-error'}">${status}</td><td title="${url}"><a href="${url}" target="_blank" style="color: inherit; text-decoration: none;">${displayUrl}</a></td><td>${dataDisplay}</td>`;
     logsTableBody.prepend(row);
 }
 
-// Helper: Fetch with Logging
 async function fetchWithLog(url, options = {}) {
     const method = options.method || 'GET';
-
-    // Determine API Name
     let apiName = 'External API';
     if (url.includes('api.os.uk/search/names')) apiName = 'OS Names API';
     else if (url.includes('api.os.uk/maps')) apiName = 'OS Maps API';
@@ -170,20 +198,13 @@ async function fetchWithLog(url, options = {}) {
 
     try {
         const response = await fetch(url, options);
-
-        // Clone response to safely read body for logging
+        // Clone for reading
         const clone = response.clone();
         let data = null;
         try {
             const text = await clone.text();
-            try {
-                data = JSON.parse(text);
-            } catch {
-                data = text;
-            }
-        } catch (e) {
-            data = "(Cannot read response body)";
-        }
+            try { data = JSON.parse(text); } catch { data = text; }
+        } catch (e) { data = "(Cannot read response body)"; }
 
         logApiCall(method, url, response.status, data, apiName);
         return response;
@@ -210,366 +231,6 @@ async function resolveLocation(postcode, osKey) {
     } else {
         throw new Error('Postcode not found');
     }
-}
-
-// Search Handler (Flood Zones / Map)
-async function handleSearch() {
-    const osKey = document.getElementById('os-key').value.trim();
-    const sepaKey = document.getElementById('sepa-key').value.trim();
-    const postcode = document.getElementById('postcode').value.trim();
-    const radius = document.getElementById('radius').value;
-
-    if (!osKey) { alert('Please enter an OS API Key.'); return; }
-    if (!postcode) { alert('Please enter a postcode.'); return; }
-
-    // Switch to Map Tab automatically
-    if (window.switchTab) switchTab('flood-zones');
-
-    searchBtn.textContent = "Searching...";
-    searchBtn.disabled = true;
-
-    // Reset Logs
-    logsTableBody.innerHTML = '';
-    apiCallCount = 0;
-
-    try {
-        // 1. Geocode
-        const { easting, northing, lat, lng } = await resolveLocation(postcode, osKey);
-
-        // 2. Update Map View
-        map.flyTo([lat, lng], 13);
-
-        // Update Base Layer to OS Maps
-        L.tileLayer(`https://api.os.uk/maps/raster/v1/zxy/Light_3857/{z}/{x}/{y}.png?key=${osKey}`, {
-            maxZoom: 20,
-            attribution: '&copy; Crown copyright and database rights ' + new Date().getFullYear() + ' Ordnance Survey.'
-        }).addTo(map);
-
-        // Draw Radius
-        if (radiusCircle) map.removeLayer(radiusCircle);
-        radiusCircle = L.circle([lat, lng], {
-            color: 'var(--accent-color)',
-            fillColor: 'var(--accent-color)',
-            fillOpacity: 0.1,
-            radius: parseInt(radius)
-        }).addTo(map);
-
-        // --- SEPA FFIMS API Integration ---
-        if (floodLayer) {
-            floodLayer.clearLayers();
-        } else {
-            floodLayer = L.featureGroup().addTo(map);
-        }
-
-        if (sepaKey) {
-            // Construct SEPA FFIMS URL (Using Local Proxy)
-            const sepaUrl = `http://localhost:3000/sepa-proxy/areas/location?x=${easting}&y=${northing}&radius=${radius}&includeTestAreas=true`;
-
-            const sepaOptions = {
-                method: 'GET',
-                headers: {
-                    'x-api-key': sepaKey,
-                    'Accept': 'application/json'
-                }
-            };
-
-            try {
-                const sepaResponse = await fetchWithLog(sepaUrl, sepaOptions);
-
-                if (sepaResponse.ok) {
-                    const sepaData = await sepaResponse.json();
-
-                    if (Array.isArray(sepaData) && sepaData.length > 0) {
-                        sepaData.forEach(area => {
-                            // Draw Shape if available
-                            if (area.shape) {
-                                try {
-                                    // Handle WKT (Well-Known Text) provided by SEPA API
-                                    // e.g., "POLYGON ((30000 60000, ...))"
-                                    const geoJsonGeometry = parseWKTToGeoJSON(area.shape);
-
-                                    if (geoJsonGeometry) {
-                                        const layer = L.geoJSON(geoJsonGeometry, {
-                                            style: {
-                                                color: '#ff4d4d',
-                                                weight: 2,
-                                                fillOpacity: 0.3
-                                            }
-                                        }).bindPopup(`<strong>${area.name}</strong><br>${area.description || ''}`);
-                                        floodLayer.addLayer(layer);
-                                    }
-                                } catch (e) {
-                                    console.warn('Could not parse shape', e);
-                                }
-                            }
-                        });
-                    }
-                } else {
-                    if (sepaResponse.status === 401 || sepaResponse.status === 403) {
-                        alert('SEPA API Key Invalid or Unauthorized.');
-                    }
-                }
-            } catch (err) {
-                console.error('SEPA API Error', err);
-            }
-        }
-
-
-    } catch (error) {
-        console.error(error);
-        alert('An error occurred. See logs.');
-    } finally {
-        searchBtn.textContent = "Search Flood Zones";
-        searchBtn.disabled = false;
-    }
-}
-
-// Helper: GetFeatureInfo for WMS
-function getFeatureInfo(e, layer) {
-    const lat = e.latlng.lat;
-    const lon = e.latlng.lng;
-    const buffer = 0.0001; // Small buffer for point query
-
-    // Construct BBOX for EPSG:4326 (Lat, Lon) for WMS 1.3.0
-    const bbox = `${lat - buffer},${lon - buffer},${lat + buffer},${lon + buffer}`;
-
-    // Width/Height and I/J logic simluates a point click on a generic tile
-    const params = {
-        request: 'GetFeatureInfo',
-        service: 'WMS',
-        crs: 'EPSG:4326', // Use 'crs' for WMS 1.3.0
-        styles: '',
-        version: '1.3.0',
-        format: 'image/png',
-        bbox: bbox,
-        height: 101, // Arbitrary small tile size simulation
-        width: 101,
-        layers: layer.wmsParams.layers,
-        query_layers: layer.wmsParams.layers,
-        info_format: 'text/html', // SEPA typically returns HTML tables
-        i: 50, // Center of the 101x101 tile
-        j: 50
-    };
-
-    let url = layer._url + L.Util.getParamString(params, layer._url, true);
-
-    // Use Local Proxy for GetFeatureInfo to avoid CORS (Text/HTML request)
-    url = url.replace('https://map.sepa.org.uk', 'http://localhost:3000/sepa-wms');
-
-    // Show loading popup
-    const popup = L.popup()
-        .setLatLng(e.latlng)
-        .setContent('<div style="padding:10px;">Checking flood risk... (Searching SEPA Layers)</div>')
-        .openOn(map);
-
-    fetchWithLog(url, { method: 'GET' }) // Use our logger!
-        .then(response => {
-            if (!response.ok) throw new Error('Network response was not ok');
-            return response.text();
-        })
-        .then(data => {
-            // Check for actual content vs whitespace or exceptions
-            if (data && data.trim().length > 0 && !data.includes('ServiceException') && !data.includes('<body></body>')) {
-                // Enhance the popup style slightly
-                const content = `
-                    <div class="sepa-popup" style="max-height: 200px; overflow-y: auto;">
-                        <h4 style="margin-top:0;">Flood Risk Data</h4>
-                        ${data}
-                    </div>
-                 `;
-                popup.setContent(content);
-            } else {
-                popup.setContent('<div style="padding:5px;">No specific flood risk data found at this point.</div>');
-            }
-        })
-        .catch(err => {
-            console.error('GetFeatureInfo error:', err);
-            popup.setContent('Error fetching flood details. See log.');
-        });
-}
-
-// Helper: Parse WKT (POLYGON/MULTIPOLYGON) to GeoJSON with BNG->WGS84 conversion
-function parseWKTToGeoJSON(wkt) {
-    wkt = wkt.trim().toUpperCase();
-
-    // Simple parser for POLYGON and MULTIPOLYGON
-    const isMulti = wkt.startsWith('MULTIPOLYGON');
-    const isPoly = wkt.startsWith('POLYGON');
-
-    if (!isMulti && !isPoly) return null;
-
-    // Remove text header and outer brackets
-    // POLYGON ((...)) -> ((...))
-    const numberStr = wkt.replace(/^(MULTI)?POLYGON\s*/, '');
-
-    // Basic strategy: Split by loop separators usually `), (` for Multipolygon or `(` for internal rings
-    // This is a naive parser but sufficient for clean API data.
-
-    // Helper to parse a list of "x y, x y" coordinates
-    const parseRing = (ringStr) => {
-        // Remove parens
-        const cleaned = ringStr.replace(/[\(\)]/g, '');
-        const pairs = cleaned.split(',');
-        return pairs.map(pair => {
-            const parts = pair.trim().split(/\s+/);
-            if (parts.length >= 2) {
-                const easting = parseFloat(parts[0]);
-                const northing = parseFloat(parts[1]);
-                const { lat, lng } = bngToLatLng(easting, northing);
-                return [lng, lat]; // GeoJSON is [lon, lat]
-            }
-            return null;
-        }).filter(p => p !== null);
-    };
-
-    if (isPoly) {
-        // POLYGON ((Ring1), (Ring2), ...)
-        const ringsRaw = numberStr.match(/\(([^()]+)\)/g);
-        if (!ringsRaw) return null;
-
-        const coordinates = ringsRaw.map(r => parseRing(r));
-        return { type: 'Polygon', coordinates: coordinates };
-    }
-
-    if (isMulti) {
-        // MULTIPOLYGON (((Ring1)), ((Ring2))) - simplified regex approach
-        // Splitting by ')), ((' is tricky with regex. 
-        // Let's assume standard formatting: ((x y, ...)), ((x y, ...))
-        const polysRaw = numberStr.split(/\)\s*,\s*\(/);
-        const coordinates = polysRaw.map(polyStr => {
-            // Re-wrap or clean
-            const ringsRaw = polyStr.match(/\(([^()]+)\)/g);
-            if (!ringsRaw) return parseRing(polyStr); // Fallback
-            return ringsRaw.map(r => parseRing(r));
-        });
-        return { type: 'MultiPolygon', coordinates: coordinates };
-    }
-
-    return null;
-}
-
-// Helper: Simple BNG (OSGB36) to LatLng (WGS84) conversion
-// Adapted for JS from standard OSTN15/ETRS89 approximate transforms
-// Helper: Accurate BNG (OSGB36) to LatLng (WGS84) conversion
-// Implements Helmert Transform for high precision
-function bngToLatLng(easting, northing) {
-    // OSGB36 Ellipsoid
-    const a = 6377563.396;
-    const b = 6356256.909;
-    const F0 = 0.9996012717;
-    const lat0 = 49 * Math.PI / 180;
-    const lon0 = -2 * Math.PI / 180;
-    const N0 = -100000;
-    const E0 = 400000;
-    const e2 = 1 - (b * b) / (a * a);
-    const n = (a - b) / (a + b);
-
-    // 1. Convert BNG Easting/Northing to OSGB36 Latitude/Longitude (Airy 1830)
-    let lat = ((northing - N0) / (a * F0)) + lat0;
-    let M = 0;
-    do {
-        M = (b * F0) * (
-            ((1 + n + (5 / 4) * n * n + (5 / 4) * n * n * n) * (lat - lat0)) -
-            ((3 * n + 3 * n * n + (21 / 8) * n * n * n) * Math.sin(lat - lat0) * Math.cos(lat + lat0)) +
-            (((15 / 8) * n * n + (15 / 8) * n * n * n) * Math.sin(2 * (lat - lat0)) * Math.cos(2 * (lat + lat0))) -
-            (((35 / 24) * n * n * n) * Math.sin(3 * (lat - lat0)) * Math.cos(3 * (lat + lat0)))
-        );
-        lat += (northing - N0 - M) / (a * F0);
-    } while (Math.abs(northing - N0 - M) >= 0.00001);
-
-    const cosLat = Math.cos(lat);
-    const sinLat = Math.sin(lat);
-    const nu = (a * F0) / Math.sqrt(1 - e2 * sinLat * sinLat);
-    const rho = (nu * (1 - e2)) / (1 - e2 * sinLat * sinLat);
-    const eta2 = (nu / rho) - 1;
-
-    const tanLat = Math.tan(lat);
-    const tan2Lat = tanLat * tanLat;
-    const tan4Lat = tan2Lat * tan2Lat;
-    const tan6Lat = tan4Lat * tan2Lat;
-
-    const secLat = 1 / cosLat;
-    const VII = tanLat / (2 * rho * nu);
-    const VIII = (tanLat / (24 * rho * nu * nu * nu)) * (5 + 3 * tan2Lat + eta2 - 9 * tan2Lat * eta2);
-    const IX = (tanLat / (720 * rho * nu * nu * nu * nu * nu)) * (61 + 90 * tan2Lat + 45 * tan4Lat);
-    const X = secLat / nu;
-    const XI = (secLat / (6 * nu * nu * nu)) * ((nu / rho) + 2 * tan2Lat);
-    const XII = (secLat / (120 * nu * nu * nu * nu * nu)) * (5 + 28 * tan2Lat + 24 * tan4Lat);
-    const XIIA = (secLat / (5040 * nu * nu * nu * nu * nu * nu * nu)) * (61 + 662 * tan2Lat + 1320 * tan4Lat + 720 * tan6Lat);
-
-    const dE = easting - E0;
-    const dE2 = dE * dE;
-    const dE3 = dE2 * dE;
-    const dE4 = dE2 * dE2;
-    const dE5 = dE4 * dE;
-    const dE6 = dE4 * dE2;
-    const dE7 = dE6 * dE;
-
-    let latOSGB = lat - VII * dE2 + VIII * dE4 - IX * dE6;
-    let lonOSGB = lon0 + X * dE - XI * dE3 + XII * dE5 - XIIA * dE7;
-
-    // 2. Convert OSGB36 Lat/Lon to Cartesian (x, y, z)
-    const H = 0; // Assume 0 height for simple 2D map
-    const sinLatO = Math.sin(latOSGB);
-    const cosLatO = Math.cos(latOSGB);
-    const sinLonO = Math.sin(lonOSGB);
-    const cosLonO = Math.cos(lonOSGB);
-
-    const nuO = a / Math.sqrt(1 - e2 * sinLatO * sinLatO);
-    const x1 = (nuO + H) * cosLatO * cosLonO;
-    const y1 = (nuO + H) * cosLatO * sinLonO;
-    const z1 = ((1 - e2) * nuO + H) * sinLatO;
-
-    // 3. Apply Helmert Transform (OSGB36 -> WGS84)
-    // Parameters from OSTN15 (or standard 7-param transform)
-    const tx = 446.448;
-    const ty = -125.157;
-    const tz = 542.060;
-    const s = -20.4894 * 1e-6; // ppm scaled
-    const rx = 0.1502 * Math.PI / (180 * 3600);
-    const ry = 0.2470 * Math.PI / (180 * 3600);
-    const rz = 0.8421 * Math.PI / (180 * 3600);
-
-    const x2 = tx + (1 + s) * x1 + (-rz) * y1 + (ry) * z1;
-    const y2 = ty + (rz) * x1 + (1 + s) * y1 + (-rx) * z1;
-    const z2 = tz + (-ry) * x1 + (rx) * y1 + (1 + s) * z1;
-
-    // 4. Convert WGS84 Cartesian to Lat/Lon
-    // WGS84 Ellipsoid
-    const a_wgs = 6378137.000;
-    const b_wgs = 6356752.314245;
-    const e2_wgs = 1 - (b_wgs * b_wgs) / (a_wgs * a_wgs);
-
-    const p = Math.sqrt(x2 * x2 + y2 * y2);
-    let lat_wgs = Math.atan2(z2, p * (1 - e2_wgs));
-    let lat_prev;
-
-    do {
-        lat_prev = lat_wgs;
-        const sinLatW = Math.sin(lat_wgs);
-        const nuW = a_wgs / Math.sqrt(1 - e2_wgs * sinLatW * sinLatW);
-        lat_wgs = Math.atan2(z2 + e2_wgs * nuW * sinLatW, p);
-    } while (Math.abs(lat_wgs - lat_prev) > 1e-9);
-
-    const lon_wgs = Math.atan2(y2, x2);
-
-    return {
-        lat: lat_wgs * 180 / Math.PI,
-        lng: lon_wgs * 180 / Math.PI
-    };
-}
-
-// Tab Switching
-function switchTab(tabId) {
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tabId);
-    });
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.style.display = content.id === tabId ? 'block' : 'none';
-        if (content.id === 'flood-zones' && content.style.display === 'block') {
-            if (map) setTimeout(() => map.invalidateSize(), 100);
-        }
-    });
 }
 
 // Active Warnings Handler
@@ -657,17 +318,214 @@ async function handleWarningsSearch() {
     }
 }
 
-// Function to attach Tab Listeners
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.style.display = content.id === tabId ? 'block' : 'none';
+        if (content.id === 'flood-zones' && content.style.display === 'block') {
+            if (map) setTimeout(() => map.invalidateSize(), 100);
+        }
+    });
+}
 function initTabs() {
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 }
-
-// Init
 window.addEventListener('DOMContentLoaded', () => {
     initMap();
     initTabs();
     searchBtn.addEventListener('click', handleSearch);
     document.getElementById('warnings-btn').addEventListener('click', handleWarningsSearch);
 });
+
+
+// COORD CONVERSION HELPER (Approximate BNG to LatLng for display)
+// Using Helmert Transform for better accuracy if possible, or simple proj4. 
+// Since we don't have proj4 lib imported, we will use a known lightweight conversion function.
+// Source: A simplified version of OSTN15 is invalid here, so we use Helmert ref logic.
+function bngToLatLng(easting, northing) {
+    // ETRS89 constants
+    const a = 6378137;
+    const b = 6356752.3141;
+    const F0 = 0.9996012717;
+    const lat0 = 49 * Math.PI / 180;
+    const lon0 = -2 * Math.PI / 180;
+    const N0 = -100000;
+    const E0 = 400000;
+    const e2 = 1 - (b * b) / (a * a);
+    const n = (a - b) / (a + b);
+
+    let lat, lon;
+    lat = lat0;
+    let M = 0;
+
+    do {
+        lat = (northing - N0 - M) / (a * F0) + lat;
+        const Ma = (1 + n + (5 / 4) * n * n + (5 / 4) * n * n * n) * (lat - lat0);
+        const Mb = (3 * n + 3 * n * n + (21 / 8) * n * n * n) * Math.sin(lat - lat0) * Math.cos(lat + lat0);
+        const Mc = ((15 / 8) * n * n + (15 / 8) * n * n * n) * Math.sin(2 * (lat - lat0)) * Math.cos(2 * (lat + lat0));
+        const Md = (35 / 24) * n * n * n * Math.sin(3 * (lat - lat0)) * Math.cos(3 * (lat + lat0));
+        M = b * F0 * (Ma - Mb + Mc - Md);
+    } while (northing - N0 - M > 0.00001);
+
+    const cosLat = Math.cos(lat);
+    const sinLat = Math.sin(lat);
+    const nu = a * F0 / Math.sqrt(1 - e2 * sinLat * sinLat);
+    const rho = a * F0 * (1 - e2) / Math.pow(1 - e2 * sinLat * sinLat, 1.5);
+    const eta2 = nu / rho - 1;
+
+    const VII = Math.tan(lat) / (2 * rho * nu);
+    const VIII = Math.tan(lat) / (24 * rho * nu * nu * nu) * (5 + 3 * Math.tan(lat) * Math.tan(lat) + eta2 - 9 * Math.tan(lat) * Math.tan(lat) * eta2);
+    const IX = Math.tan(lat) / (720 * rho * nu * nu * nu * nu * nu) * (61 + 90 * Math.tan(lat) * Math.tan(lat) + 45 * Math.tan(lat) * Math.tan(lat) * Math.tan(lat) * Math.tan(lat));
+    const X = (1 / cosLat) / nu;
+    const XI = (1 / cosLat) / (6 * nu * nu * nu) * (nu / rho + 2 * Math.tan(lat) * Math.tan(lat));
+    const XII = (1 / cosLat) / (120 * nu * nu * nu * nu * nu) * (5 + 28 * Math.tan(lat) * Math.tan(lat) + 24 * Math.tan(lat) * Math.tan(lat) * Math.tan(lat) * Math.tan(lat));
+    const XIII = (1 / cosLat) / (5040 * nu * nu * nu * nu * nu * nu * nu) * (61 + 662 * Math.tan(lat) * Math.tan(lat) + 1320 * Math.tan(lat) * Math.tan(lat) * Math.tan(lat) * Math.tan(lat) + 720 * Math.tan(lat) * Math.tan(lat) * Math.tan(lat) * Math.tan(lat) * Math.tan(lat) * Math.tan(lat));
+
+    const dE = easting - E0;
+    lat = lat - VII * dE * dE + VIII * dE * dE * dE * dE - IX * dE * dE * dE * dE * dE * dE;
+    lon = lon0 + X * dE - XI * dE * dE * dE + XII * dE * dE * dE * dE * dE - XIII * dE * dE * dE * dE * dE * dE * dE;
+
+    return {
+        lat: lat * 180 / Math.PI,
+        lng: lon * 180 / Math.PI
+    };
+}
+
+// Helper: Parse WKT to GeoJSON (Polygon/MultiPolygon)
+function parseWKTToGeoJSON(wkt) {
+    // Example WKT: "POLYGON ((x y, x y, ...))"
+    if (!wkt.startsWith('POLYGON') && !wkt.startsWith('MULTIPOLYGON')) return null;
+
+    const isMulti = wkt.startsWith('MULTIPOLYGON');
+    const content = wkt.substring(wkt.indexOf('((') + 2, wkt.lastIndexOf('))'));
+
+    // Very basic parser for single polygon for now, or use library
+    // This is getting complex for regex.
+    // If we assume simple POLYGON ((x1 y1, x2 y2...))
+    try {
+        // Remove outer parens if multi
+        // Split by '), (' if multi?
+        // Let's assume standard simple WKT from SEPA for now.
+        // Actually, better to use regex to extract coordinate pairs.
+
+        const coordsText = content.replace(/\)/g, '').replace(/\(/g, '');
+        const pairs = coordsText.split(',');
+        const coordinates = [];
+
+        pairs.forEach(pair => {
+            const [x, y] = pair.trim().split(/\s+/);
+            const latLng = bngToLatLng(parseFloat(x), parseFloat(y));
+            coordinates.push([latLng.lng, latLng.lat]); // GeoJSON is [lng, lat]
+        });
+
+        // Close ring
+        return {
+            "type": "Polygon",
+            "coordinates": [coordinates]
+        };
+
+    } catch (e) {
+        return null;
+    }
+}
+
+// Feature Info from WMS
+function getFeatureInfo(evt, layer) {
+    const url = getFeatureInfoUrl(
+        map,
+        layer,
+        evt.latlng,
+        {
+            'info_format': 'text/html' // Changed from application/json
+        }
+    );
+
+    // Use Proxy for WMS Feature Info to allow parsing?
+    // WMS usually returns HTML or XML.
+    // SEPA might return JSON if asked.
+    // Let's proxy it to avoid CORS if needed, but 'img' requests are fine.
+    // FeatureInfo requests via fetch NEED proxy if CORS restricted.
+    // SEPA servers usually CORS restricted.
+
+    // Transform URL to use local proxy
+    // Original: https://map.sepa.org.uk/server/services/.../WMSServer?....
+    // Proxy: http://localhost:3000/sepa-wms/server/services/...?....
+
+    const proxyUrl = url.replace('https://map.sepa.org.uk', 'http://localhost:3000/sepa-wms');
+
+    fetchWithLog(proxyUrl)
+        .then(response => response.text()) // Use text as it might be HTML/XML
+        .then(data => {
+            // Use iframe to isolate content
+            const iframe = document.createElement('iframe');
+            iframe.style.width = "100%";
+            iframe.style.height = "200px";
+            iframe.style.border = "none";
+
+            // Wait for iframe to be in DOM before writing? No, we need to put it in popup first.
+            const container = document.createElement('div');
+            container.appendChild(iframe);
+
+            L.popup()
+                .setLatLng(evt.latlng)
+                .setContent(container)
+                .openOn(map);
+
+            // Write content to iframe
+            // Delay slightly to ensure iframe is ready
+            setTimeout(() => {
+                const doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write(data);
+                doc.close();
+                // Adjust styling inside iframe if needed
+                doc.body.style.fontFamily = "sans-serif";
+                doc.body.style.fontSize = "12px";
+                doc.body.style.margin = "0";
+            }, 100);
+        });
+}
+
+// WMS GetFeatureInfo URL Builder
+function getFeatureInfoUrl(map, layer, latlng, params) {
+    const point = map.latLngToContainerPoint(latlng, map.getZoom());
+    const size = map.getSize();
+
+    const defaultParams = {
+        request: 'GetFeatureInfo',
+        service: 'WMS',
+        srs: 'EPSG:4326',
+        styles: '',
+        transparent: true,
+        version: layer.options.version,
+        format: layer.options.format,
+        bbox: map.getBounds().toBBoxString(),
+        height: size.y,
+        width: size.x,
+        layers: layer.options.layers,
+        query_layers: layer.options.layers,
+        info_format: 'text/html'
+    };
+
+    // WMS 1.3.0 uses 'i' and 'j' instead of 'x' and 'y'
+    defaultParams[defaultParams.version === '1.3.0' ? 'i' : 'x'] = Math.round(point.x);
+    defaultParams[defaultParams.version === '1.3.0' ? 'j' : 'y'] = Math.round(point.y);
+
+    // Add additional params
+    // ESRI WMS sometimes wants 'crs' instead of 'srs' for 1.3.0
+    if (defaultParams.version === '1.3.0') {
+        defaultParams.crs = defaultParams.srs;
+        delete defaultParams.srs;
+    }
+
+    const allParams = { ...defaultParams, ...params };
+    const queryString = Object.keys(allParams)
+        .map(key => key + '=' + encodeURIComponent(allParams[key]))
+        .join('&');
+
+    return layer._url + '?' + queryString;
+}
