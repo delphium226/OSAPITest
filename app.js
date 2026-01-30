@@ -67,8 +67,11 @@ async function handleSearch() {
             }
 
             if (sepaKey) {
+                // Get Test Data Toggle State
+                const includeTest = document.getElementById('sepa-test-toggle').checked;
+
                 // Construct SEPA FFIMS URL (Using Local Proxy)
-                const sepaUrl = `http://localhost:3000/sepa-proxy/areas/location?x=${easting}&y=${northing}&radius=${radius}&includeTestAreas=true`;
+                const sepaUrl = `http://localhost:3000/sepa-proxy/areas/location?x=${easting}&y=${northing}&radius=${radius}&includeTestAreas=${includeTest}`;
 
                 const sepaOptions = {
                     method: 'GET',
@@ -266,7 +269,10 @@ async function handleWarningsSearch() {
     try {
         const { easting, northing } = await resolveLocation(postcode, osKey);
 
-        const sepaUrl = `http://localhost:3000/sepa-proxy/warnings/location?x=${easting}&y=${northing}&radius=${radius}`;
+        // Get Test Data Toggle State
+        const includeTest = document.getElementById('sepa-test-toggle').checked;
+
+        const sepaUrl = `http://localhost:3000/sepa-proxy/warnings/location?x=${easting}&y=${northing}&radius=${radius}&includeTestAreas=${includeTest}`;
         const sepaOptions = {
             method: 'GET',
             headers: {
@@ -305,7 +311,7 @@ async function handleWarningsSearch() {
                         <td>
                             <details>
                                 <summary>View JSON</summary>
-                                <pre style="font-size:0.7em; max-height: 150px; overflow: auto; background:#f8f9fa; padding:5px; border:1px solid #eee;">${JSON.stringify(w, null, 2)}</pre>
+                                <pre style="font-size:0.75em; max-height: 150px; overflow: auto; background:#f0f0f0; color:#212529; padding:8px; border:1px solid #ccc; border-radius: 4px;">${JSON.stringify(w, null, 2)}</pre>
                             </details>
                         </td>
                     `;
@@ -440,7 +446,7 @@ function getFeatureInfo(evt, layer) {
         layer,
         evt.latlng,
         {
-            'info_format': 'text/html' // Changed from application/json
+            'info_format': 'text/plain' // Changed to text/plain for reliability
         }
     );
 
@@ -453,33 +459,24 @@ function getFeatureInfo(evt, layer) {
     fetchWithLog(proxyUrl)
         .then(response => response.text()) // Use text as it might be HTML/XML
         .then(data => {
-            // Use iframe to isolate content
-            const iframe = document.createElement('iframe');
-            iframe.style.width = "100%";
-            iframe.style.height = "200px";
-            iframe.style.border = "none";
+            // Direct HTML injection - simpler and often more reliable for Leaflet popups
+            // than managing iframes (if the content is simple HTML/Table)
+            const contentDiv = document.createElement('div');
+            contentDiv.style.maxHeight = "250px";
+            contentDiv.style.overflowY = "auto";
 
-            // Wait for iframe to be in DOM before writing? No, we need to put it in popup first.
-            const container = document.createElement('div');
-            container.appendChild(iframe);
+            const trimmedData = data ? data.trim() : '';
+            if (!trimmedData) {
+                contentDiv.innerHTML = '<p>No info available (Empty Response)</p>';
+            } else {
+                // Wrap plain text in pre for readability with high contrast
+                contentDiv.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace; color: #000000; background-color: #ffffff; padding: 5px; border-radius: 4px;">${trimmedData}</pre>`;
+            }
 
             L.popup()
                 .setLatLng(evt.latlng)
-                .setContent(container)
+                .setContent(contentDiv)
                 .openOn(map);
-
-            // Write content to iframe
-            // Delay slightly to ensure iframe is ready
-            setTimeout(() => {
-                const doc = iframe.contentWindow.document;
-                doc.open();
-                doc.write(data);
-                doc.close();
-                // Adjust styling inside iframe if needed
-                doc.body.style.fontFamily = "sans-serif";
-                doc.body.style.fontSize = "12px";
-                doc.body.style.margin = "0";
-            }, 100);
         });
 }
 
@@ -496,7 +493,9 @@ function getFeatureInfoUrl(map, layer, latlng, params) {
         transparent: true,
         version: layer.options.version,
         format: layer.options.format,
-        bbox: map.getBounds().toBBoxString(),
+        bbox: (layer.options.version === '1.3.0' && layer.options.crs === L.CRS.EPSG4326)
+            ? `${map.getBounds().getSouth()},${map.getBounds().getWest()},${map.getBounds().getNorth()},${map.getBounds().getEast()}`
+            : map.getBounds().toBBoxString(),
         height: size.y,
         width: size.x,
         layers: layer.options.layers,

@@ -56,9 +56,22 @@
                 </div>
 
                 <button id="search-btn">Search Flood Zones</button>
-                <button id="warnings-btn" class="secondary-btn"
-                    style="margin-top: 10px; background: var(--secondary-color, #6c757d);">Active Flood
-                    Warnings</button>
+                <div class="warnings-control-group"
+                    style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
+                    <button id="warnings-btn" class="secondary-btn"
+                        style="background: var(--secondary-color, #6c757d); margin: 0;">Active Flood
+                        Warnings</button>
+
+                    <div class="toggle-wrapper" style="display: flex; align-items: center; gap: 8px;">
+                        <label class="switch"
+                            style="position: relative; display: inline-block; width: 40px; height: 22px;">
+                            <input type="checkbox" id="sepa-test-toggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="toggle-label" style="font-size: 0.8rem; color: var(--text-secondary);">Request SEPA
+                            test data</span>
+                    </div>
+                </div>
             </aside>
 
             <!-- Main Map Area / Results Pane -->

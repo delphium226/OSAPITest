@@ -259,38 +259,88 @@ details summary {
     /* Force minimum height in case flex fails */
 }
 
-#flood-warnings {
-    background: white;
-}
 
-/* Warnings Table */
+
+/* Warnings Table - Inherit global table styles */
 #warnings-table th,
 #warnings-table td {
-    padding: 8px;
-    border: 1px solid #eee;
-    text-align: left;
-    font-size: 0.9rem;
-    color: #333;
+    /* Resetting to default table styles */
+    border: 1px solid var(--border-color);
+    color: inherit;
 }
 
 #warnings-table th {
-    background: #f8f9fa;
-    color: #333;
-    /* Explicitly set dark color for contrast against light bg */
+    background-color: var(--sidebar-bg);
+    color: var(--text-primary);
 }
 
 /* Severity Colors */
+/* Severity Colors - Dark Mode Compatible */
 .severity-high {
     border-left: 5px solid #d63384;
-    background: #fff0f6 !important;
+    background: rgba(214, 51, 132, 0.1) !important;
 }
 
 .severity-medium {
     border-left: 5px solid #fd7e14;
-    background: #fff4e6 !important;
+    background: rgba(253, 126, 20, 0.1) !important;
 }
 
 .severity-low {
     border-left: 5px solid #ffc107;
-    background: #fff9db !important;
+    background: rgba(255, 193, 7, 0.1) !important;
+}
+
+/* Toggle Switch Styling */
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+
+input:checked+.slider {
+    background-color: var(--accent-color);
+}
+
+input:focus+.slider {
+    box-shadow: 0 0 1px var(--accent-color);
+}
+
+input:checked+.slider:before {
+    -webkit-transform: translateX(18px);
+    -ms-transform: translateX(18px);
+    transform: translateX(18px);
+}
+
+/* Rounded sliders */
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
 }
